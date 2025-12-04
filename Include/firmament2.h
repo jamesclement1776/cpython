@@ -65,6 +65,12 @@ void _firm2_source_end(void);
 const char *_firm2_current_filename(void);
 const char *_firm2_current_source_id_hex(void);
 
+/* ---------------- Allocation lifecycle ---------------- */
+void _firm2_emit_alloc_event(const char *event,
+                             size_t size,
+                             const void *ptr,
+                             const char *allocator);
+
 #ifdef __cplusplus
 }
 #endif

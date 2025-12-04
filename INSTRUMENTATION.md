@@ -10,6 +10,7 @@ Emitters:
 - Source scope: Python/compile.c & Python/pythonrun.c → `_firm2_source_begin/_end` push/pop the current source filename+`source_id` (passed through to tokenizer/AST/codegen)
 - Code lifecycle: Objects/codeobject.c → `_firm2_emit_code_create_meta/_destroy_meta` (+ `co_extra` provenance)
 - Frame lifecycle: Python/ceval.c → `_firm2_emit_frame_event` on both frame enter and exit
+- Allocation lifecycle: Objects/obmalloc.c → `_firm2_emit_alloc_event` in `_PyMem_RawMalloc`/`_PyMem_RawFree` (system allocator) and pymalloc paths (`_PyObject_Malloc`/`_PyObject_Free`)
 - Common envelope everywhere: `event_id`, `pid`, `tid`, `ts_ns`
 
 SOURCE_BEGIN/SOURCE_END appear exactly once per compile/execute entry point. They are wired in:
@@ -85,6 +86,10 @@ printf "\nCode lifecycle (CREATE/DESTROY):\n" && \
 printf "\nFrame lifecycle (ENTER/EXIT):\n" && \
   grep -m1 '"FRAME_ENTER"' /tmp/firm2_events.ndjson && \
   grep -m1 '"FRAME_EXIT"' /tmp/firm2_events.ndjson
+
+printf "\nAllocation lifecycle (MALLOC/DEALLOC):\n" && \
+  grep -m1 '"MALLOC"' /tmp/firm2_events.ndjson && \
+  grep -m1 '"DEALLOC"' /tmp/firm2_events.ndjson
 ```
 
 Each line in `/tmp/firm2_events.ndjson` is NDJSON with the common envelope (`event_id`, `pid`, `tid`, `ts_ns`) and the emitter-specific payload fields, letting you inspect or post-process the full stream.
