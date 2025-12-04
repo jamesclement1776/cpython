@@ -766,6 +766,20 @@ elif not pythonpath_was_set:
     config['module_search_paths'] = pythonpath
     config['module_search_paths_set'] = 1
 
+else:
+    if not stdlib_dir and base_prefix:
+        stdlib_dir = joinpath(base_prefix, STDLIB_SUBDIR)
+    if not platstdlib_dir and base_exec_prefix:
+        platstdlib_dir = joinpath(base_exec_prefix, PLATSTDLIB_LANDMARK)
+
+    if platstdlib_dir:
+        if not pythonpath:
+            config['module_search_paths'] = [platstdlib_dir]
+        elif platstdlib_dir not in pythonpath:
+            pythonpath = list(pythonpath)
+            pythonpath.append(platstdlib_dir)
+            config['module_search_paths'] = pythonpath
+
 
 # ******************************************************************************
 # POSIX prefix/exec_prefix QUIRKS
