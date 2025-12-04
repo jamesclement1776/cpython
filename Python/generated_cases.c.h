@@ -7685,6 +7685,8 @@
             retval = stack_pointer[-1];
             assert(frame->owner == FRAME_OWNED_BY_INTERPRETER);
             assert(_PyFrame_IsIncomplete(frame));
+            /* Firmament2: frame exit event */
+            _firm2_emit_frame_event("FRAME_EXIT", frame);
             tstate->current_frame = frame->previous;
             assert(!_PyErr_Occurred(tstate));
             PyObject *result = PyStackRef_AsPyObjectSteal(retval);
