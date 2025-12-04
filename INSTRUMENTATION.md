@@ -7,10 +7,14 @@ Gates:
 Emitters:
 - Tokenizer: Parser/lexer/lexer.c → `emit_tokenizer_event_json` via `_PyTokenizer_Get`
 - AST: Parser/asdl_c.py → Python/Python-ast.c → `emit_ast_event_json`
-- Source scope: Python/compile.c & Python/pythonrun.c → `_firm2_source_begin/_end`
+- Source scope: Python/compile.c & Python/pythonrun.c → `_firm2_source_begin/_end` push/pop the current source filename+`source_id` (passed through to tokenizer/AST/codegen)
 - Code lifecycle: Objects/codeobject.c → `_firm2_emit_code_create_meta/_destroy_meta` (+ `co_extra` provenance)
-- Frame lifecycle: Python/ceval.c → `_firm2_emit_frame_event`
+- Frame lifecycle: Python/ceval.c → `_firm2_emit_frame_event` on both frame enter and exit
 - Common envelope everywhere: `event_id`, `pid`, `tid`, `ts_ns`
+
+SOURCE_BEGIN/SOURCE_END appear exactly once per compile/execute entry point. They are wired in:
+- `Python/compile.c`: `_PyAST_Compile` wraps AST-to-bytecode compilation, so the tokenizer, AST, and code lifecycle emitters can inherit `filename`/`source_id` even for in-memory sources.
+- `Python/pythonrun.c`: `pyrun_file`, `_PyRun_StringFlagsWithName`, and `run_mod` bracket execution of file-backed and string-backed code, ensuring the active source scope is visible to downstream events.
 
 ## Build, install, and test on Linux
 
@@ -78,8 +82,9 @@ printf "\nCode lifecycle (CREATE/DESTROY):\n" && \
   grep -m1 '"CODE_CREATE"' /tmp/firm2_events.ndjson && \
   grep -m1 '"CODE_DESTROY"' /tmp/firm2_events.ndjson
 
-printf "\nFrame enter event:\n" && \
-  grep -m1 '"FRAME_ENTER"' /tmp/firm2_events.ndjson
+printf "\nFrame lifecycle (ENTER/EXIT):\n" && \
+  grep -m1 '"FRAME_ENTER"' /tmp/firm2_events.ndjson && \
+  grep -m1 '"FRAME_EXIT"' /tmp/firm2_events.ndjson
 ```
 
 Each line in `/tmp/firm2_events.ndjson` is NDJSON with the common envelope (`event_id`, `pid`, `tid`, `ts_ns`) and the emitter-specific payload fields, letting you inspect or post-process the full stream.

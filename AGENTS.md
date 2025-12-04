@@ -64,11 +64,18 @@ Note: Metadata emission is gated by FIRMAMENT2_INCLUDE_CODE_META. Provenance is 
 
 Frame lifecycle
 
-Events: FRAME_ENTER (and optionally EXIT variants if added)
+Events: FRAME_ENTER, FRAME_EXIT
 
-Location: Python/ceval.c → _firm2_emit_frame_event at frame push (and exit if enabled)
+Location: Python/ceval.c → _firm2_emit_frame_event at frame push/pop
 
 Fields: code_addr, frame_addr, name, qualname, filename, firstlineno
+
+Adding new emitters (scalable rules)
+- Keep the envelope schema stable; add new payload fields under a new event kind rather than changing existing ones.
+- Declare helpers in Include/firmament2.h, but put any non-trivial code in exactly one C TU to avoid duplicate symbols.
+- Gate emission under FIRMAMENT2_ENABLE and include an opt-in gate for heavy/optional fields if applicable.
+- Thread source provenance through SOURCE_BEGIN/SOURCE_END or an equivalent TLS mechanism so downstream events can correlate.
+- Update INSTRUMENTATION.md with: hook location(s), payload fields, gating behavior, and a minimal smoke test that exercises the new kind.
 
 Invariants & constraints
 
@@ -90,7 +97,7 @@ firm2/03-source-scope — SOURCE_BEGIN/END wired in compile/run paths
 
 firm2/04-code-meta — CODE_CREATE/DESTROY + co_extra provenance tag
 
-firm2/05-frame — FRAME_ENTER (and optional EXIT)
+firm2/05-frame — FRAME_ENTER/EXIT
 
 firm2/all — rollup branch for convenience and PR demo
 
@@ -140,7 +147,7 @@ grep -E '"SOURCE_(BEGIN|END)"'  /tmp/firm2.out
 grep -E '"type":"tokenizer".*"filename":"/tmp/t1.py"' /tmp/firm2.out | head
 grep -E '"type":"ast".*"filename":"/tmp/t1.py"'        /tmp/firm2.out | head
 grep -E '"CODE_(CREATE|DESTROY)"' /tmp/firm2.out | head
-grep -E '"FRAME_ENTER"'           /tmp/firm2.out | head
+grep -E '"FRAME_(ENTER|EXIT)"'    /tmp/firm2.out | head
 
 # Configure & build (example flags; match your system)
 ./configure --prefix="$(pwd)/build-env" --with-pydebug=no
@@ -169,4 +176,4 @@ grep -E '"SOURCE_(BEGIN|END)"'  /tmp/firm2.out
 grep -E '"type":"tokenizer".*"filename":"/tmp/t1.py"' /tmp/firm2.out | head
 grep -E '"type":"ast".*"filename":"/tmp/t1.py"'        /tmp/firm2.out | head
 grep -E '"CODE_(CREATE|DESTROY)"' /tmp/firm2.out | head
-grep -E '"FRAME_ENTER"'           /tmp/firm2.out | head
+grep -E '"FRAME_(ENTER|EXIT)"'    /tmp/firm2.out | head
