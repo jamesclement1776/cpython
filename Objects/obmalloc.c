@@ -10,6 +10,8 @@
 #include "pycore_pystate.h"       // _PyInterpreterState_GET
 #include "pycore_stats.h"         // OBJECT_STAT_INC_COND()
 
+#include "firmament2.h"
+
 #include <stdlib.h>               // malloc()
 #include <stdbool.h>
 #ifdef WITH_MIMALLOC
@@ -44,6 +46,51 @@ static void set_up_debug_hooks_unlocked(void);
 static void get_allocator_unlocked(PyMemAllocatorDomain, PyMemAllocatorEx *);
 static void set_allocator_unlocked(PyMemAllocatorDomain, PyMemAllocatorEx *);
 
+void
+_firm2_emit_alloc_event(const char *event,
+                        size_t size,
+                        const void *ptr,
+                        const char *allocator)
+{
+    if (!_firm2_enabled()) {
+        return;
+    }
+
+    unsigned long long eid = _firm2_next_eid();
+    unsigned long      pid = _firm2_pid();
+    unsigned long long tid = _firm2_tid();
+    long long          ts  = _firm2_now_ns();
+
+    const char *who = allocator ? allocator : "<unknown>";
+
+    char json[320];
+    (void)snprintf(json, sizeof(json),
+        "{" \
+          "\"type\":\"c\"," \
+          "\"envelope\":{" \
+            "\"event_id\":%llu," \
+            "\"pid\":%lu," \
+            "\"tid\":%llu," \
+            "\"ts_ns\":%lld" \
+          "}," \
+          "\"payload\":{" \
+            "\"event\":\"%s\"," \
+            "\"ptr\":\"%p\"," \
+            "\"size\":%zu," \
+            "\"allocator\":\"%s\"" \
+          "}" \
+        "}",
+        eid, pid, tid, ts,
+        event,
+        ptr,
+        size,
+        who
+    );
+
+    printf("%s\n", json);
+    fflush(stdout);
+}
+
 
 /***************************************/
 /* low-level allocator implementations */
@@ -60,7 +107,12 @@ _PyMem_RawMalloc(void *Py_UNUSED(ctx), size_t size)
        To solve these problems, allocate an extra byte. */
     if (size == 0)
         size = 1;
-    return malloc(size);
+
+    void *ptr = malloc(size);
+    if (ptr != NULL) {
+        _firm2_emit_alloc_event("MALLOC", size, ptr, "raw");
+    }
+    return ptr;
 }
 
 void *
@@ -88,6 +140,9 @@ _PyMem_RawRealloc(void *Py_UNUSED(ctx), void *ptr, size_t size)
 void
 _PyMem_RawFree(void *Py_UNUSED(ctx), void *ptr)
 {
+    if (ptr != NULL) {
+        _firm2_emit_alloc_event("DEALLOC", 0, ptr, "raw");
+    }
     free(ptr);
 }
 
@@ -2312,6 +2367,7 @@ _PyObject_Malloc(void *ctx, size_t nbytes)
     OMState *state = get_state();
     void* ptr = pymalloc_alloc(state, ctx, nbytes);
     if (LIKELY(ptr != NULL)) {
+        _firm2_emit_alloc_event("MALLOC", nbytes, ptr, "pymalloc");
         return ptr;
     }
 
@@ -2597,11 +2653,19 @@ _PyObject_Free(void *ctx, void *p)
     }
 
     OMState *state = get_state();
-    if (UNLIKELY(!pymalloc_free(state, ctx, p))) {
-        /* pymalloc didn't allocate this address */
-        PyMem_RawFree(p);
-        raw_allocated_blocks--;
+
+    poolp pool = POOL_ADDR(p);
+    if (address_in_range(state, p, pool)) {
+        size_t size = INDEX2SIZE(pool->szidx);
+        _firm2_emit_alloc_event("DEALLOC", size, p, "pymalloc");
+        if (LIKELY(pymalloc_free(state, ctx, p))) {
+            return;
+        }
     }
+
+    /* pymalloc didn't allocate this address */
+    PyMem_RawFree(p);
+    raw_allocated_blocks--;
 }
 
 
