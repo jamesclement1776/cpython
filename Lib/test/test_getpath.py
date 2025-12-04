@@ -290,6 +290,40 @@ class MockGetPathTests(unittest.TestCase):
         actual = getpath(ns, expected)
         self.assertEqual(expected, actual)
 
+    def test_preseeded_path_adds_platstdlib(self):
+        "Ensure platstdlib is added when module_search_paths is pre-set."
+        ns = MockPosixNamespace(
+            PREFIX="/opt/python",
+            argv0="python",
+            ENV_PATH="/opt/python/bin",
+            config=dict(
+                module_search_paths=[
+                    "/opt/python/lib/python98.zip",
+                    "/opt/python/lib/python9.8",
+                ],
+                module_search_paths_set=1,
+            ),
+        )
+        ns.add_known_xfile("/opt/python/bin/python")
+        ns.add_known_dir("/opt/python/lib/python9.8")
+        ns.add_known_file("/opt/python/lib/python9.8/os.py")
+        ns.add_known_dir("/opt/python/lib/python9.8/lib-dynload")
+
+        expected = dict(
+            executable="/opt/python/bin/python",
+            base_executable="/opt/python/bin/python",
+            prefix="/opt/python",
+            exec_prefix="/opt/python",
+            module_search_paths_set=1,
+            module_search_paths=[
+                "/opt/python/lib/python98.zip",
+                "/opt/python/lib/python9.8",
+                "/opt/python/lib/python9.8/lib-dynload",
+            ],
+        )
+        actual = getpath(ns, expected)
+        self.assertEqual(expected, actual)
+
     def test_buildpath_posix(self):
         """Test an in-build-tree layout on POSIX.
 
