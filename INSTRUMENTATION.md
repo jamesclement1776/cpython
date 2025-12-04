@@ -23,27 +23,63 @@ sudo apt install build-essential gdb lcov pkg-config \
      liblzma-dev libncursesw5-dev libreadline6-dev libsqlite3-dev \
      libssl-dev tk-dev uuid-dev xz-utils zlib1g-dev
 
-./configure
-make -j$(nproc)
-make test         # optional, runs the standard CPython suite
-sudo make install # installs the instrumented interpreter as python3
+# Configure a local, prefix-isolated build so you do not overwrite system python
+./configure --prefix="$(pwd)/build-env" --with-pydebug=no
+
+# Compile and install the instrumented interpreter
+make -j"$(nproc)"
+make install
+
+# Point helper shim (optional convenience)
+ln -sf python3.14 build-env/bin/python
 ```
 
-To exercise the emitters, set `FIRMAMENT2_ENABLE=1` and run any script. The events print to stdout in NDJSON format.
+### Full emitter exercise (compile, install, and verify every event kind)
 
-- **Tokenizer NDJSON** (one line per token):
-  ```bash
-  FIRMAMENT2_ENABLE=1 ./python -c "x = 1 + 2" > tokens.ndjson
-  head tokens.ndjson
-  ```
+The following script compiles/installs the interpreter (if not already built), executes a short program that triggers every custom emitter, writes the NDJSON events to a file, and prints at least one example event of each type back to the terminal.
 
-- **AST NDJSON** (one line per node):
-  ```bash
-  FIRMAMENT2_ENABLE=1 ./python - <<'PY' > ast.ndjson
-  def add(a, b):
-      return a + b
-  PY
-  head ast.ndjson
-  ```
+```bash
+# Build + install (skipped if already done)
+./configure --prefix="$(pwd)/build-env" --with-pydebug=no
+make -j"$(nproc)"
+make install
+ln -sf python3.14 build-env/bin/python
 
-The emitted JSON includes the common envelope (`event_id`, `pid`, `tid`, `ts_ns`) plus the emitter-specific payload fields.
+# Run a program that exercises all emitters and capture output
+cat > /tmp/firm2_demo.py <<'PY'
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+class Greeter:
+    def greet(self):
+        return "hi"
+
+print(fib(4))
+print(Greeter().greet())
+PY
+
+FIRMAMENT2_ENABLE=1 FIRMAMENT2_INCLUDE_CODE_META=1 \
+  ./build-env/bin/python -I -S /tmp/firm2_demo.py > /tmp/firm2_events.ndjson
+
+# Show a representative event for every emitter from the captured file
+printf "\nSOURCE scope events (BEGIN/END):\n" && \
+  grep -m1 '"SOURCE_BEGIN"' /tmp/firm2_events.ndjson && \
+  grep -m1 '"SOURCE_END"' /tmp/firm2_events.ndjson
+
+printf "\nTokenizer event:\n" && \
+  grep -m1 '"type":"tokenizer"' /tmp/firm2_events.ndjson
+
+printf "\nAST event:\n" && \
+  grep -m1 '"type":"ast"' /tmp/firm2_events.ndjson
+
+printf "\nCode lifecycle (CREATE/DESTROY):\n" && \
+  grep -m1 '"CODE_CREATE"' /tmp/firm2_events.ndjson && \
+  grep -m1 '"CODE_DESTROY"' /tmp/firm2_events.ndjson
+
+printf "\nFrame enter event:\n" && \
+  grep -m1 '"FRAME_ENTER"' /tmp/firm2_events.ndjson
+```
+
+Each line in `/tmp/firm2_events.ndjson` is NDJSON with the common envelope (`event_id`, `pid`, `tid`, `ts_ns`) and the emitter-specific payload fields, letting you inspect or post-process the full stream.
