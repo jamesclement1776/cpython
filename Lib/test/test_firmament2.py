@@ -15,11 +15,9 @@ class FirmamentEmitterTests(unittest.TestCase):
             with open(script, "w", encoding="utf-8") as handle:
                 handle.write(textwrap.dedent(source))
 
-            env = os_helper.EnvironmentVarGuard()
-            env.set("FIRMAMENT2_ENABLE", "1")
-            env.set("FIRMAMENT2_INCLUDE_CODE_META", "1")
-            env.unset("PYTHONHOME")
-            env.unset("PYTHONPATH")
+            env = os.environ.copy()
+            env["FIRMAMENT2_ENABLE"] = "1"
+            env["FIRMAMENT2_INCLUDE_CODE_META"] = "1"
 
             proc = subprocess.run(
                 [sys.executable, "-I", "-S", script],
