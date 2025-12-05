@@ -7,6 +7,7 @@ Gates:
 Emitters:
 - Tokenizer: Parser/lexer/lexer.c → `emit_tokenizer_event_json` via `_PyTokenizer_Get`
 - AST: Parser/asdl_c.py → Python/Python-ast.c → `emit_ast_event_json`
+- AST type definitions (install/init time): Parser/asdl_c.py → Python/Python-ast.c → `emit_ast_type_def_event_json`
 - Source scope: Python/compile.c & Python/pythonrun.c → `_firm2_source_begin/_end` push/pop the current source filename+`source_id` (passed through to tokenizer/AST/codegen)
 - Code lifecycle: Objects/codeobject.c → `_firm2_emit_code_create_meta/_destroy_meta` (+ `co_extra` provenance)
 - Frame lifecycle: Python/ceval.c → `_firm2_emit_frame_event` on both frame enter and exit

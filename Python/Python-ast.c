@@ -32,6 +32,7 @@ get_ast_state(void)
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "firmament2.h"
 
 /* Emit one AST event line, gated by FIRMAMENT2_ENABLE. */
@@ -82,6 +83,80 @@ emit_ast_event_json(const char *kind,
         kind,
         lineno, col_offset, end_lineno, end_col_offset,
         filename, source_id
+    );
+    printf("%s\n", json_buf);
+    fflush(stdout);
+}
+
+/* Emit one AST type definition event line, gated by FIRMAMENT2_ENABLE. */
+static void
+emit_ast_type_def_event_json(const char *kind,
+                             const char* const* fields,
+                             int num_fields)
+{
+    if (!_firm2_enabled()) {
+        return;
+    }
+
+    /* Envelope */
+    unsigned long long eid = _firm2_next_eid();
+    unsigned long      pid = _firm2_pid();
+    unsigned long long tid = _firm2_tid();
+    long long          ts  = _firm2_now_ns();
+
+    /* Field list */
+    char fields_buf[320];
+    size_t pos = 0;
+    bool truncated = false;
+    fields_buf[pos++] = '[';
+
+    for (int i = 0; i < num_fields; i++) {
+        if (pos >= sizeof(fields_buf) - 1) {
+            truncated = true;
+            break;
+        }
+        if (i) {
+            fields_buf[pos++] = ',';
+        }
+        int written = snprintf(fields_buf + pos,
+                               sizeof(fields_buf) - pos,
+                               "\"%s\"",
+                               fields[i]);
+        if (written < 0 || (size_t)written >= sizeof(fields_buf) - pos) {
+            truncated = true;
+            pos = sizeof(fields_buf) - 1;
+            break;
+        }
+        pos += (size_t)written;
+    }
+
+    if (pos >= sizeof(fields_buf) - 1) {
+        truncated = true;
+        pos = sizeof(fields_buf) - 2;
+    }
+    fields_buf[pos++] = ']';
+    fields_buf[pos] = '\0';
+
+    char json_buf[640];
+    (void)snprintf(
+        json_buf,
+        sizeof(json_buf),
+        "{""\\\"type\\\":\\\"ast_type_def\\\",""
+          "\\\"envelope\\\":{"
+            "\\\"event_id\\\":%llu,"
+            "\\\"pid\\\":%lu,"
+            "\\\"tid\\\":%llu,"
+            "\\\"ts_ns\\\":%lld"
+          "},""
+          "\\\"payload\\\":{"
+            "\\\"kind\\\":\\\"%s\\\",""
+            "\\\"fields\\\":%s%s"
+          "}""
+        "}",
+        eid, pid, tid, ts,
+        kind,
+        fields ? fields_buf : "[]",
+        truncated ? ",\\\"truncated_fields\\\":true" : ""
     );
     printf("%s\n", json_buf);
     fflush(stdout);
@@ -6077,6 +6152,9 @@ make_type(struct ast_state *state, const char *type, PyObject* base,
                     state->ast,
                     state->__doc__, doc);
     Py_DECREF(fnames);
+    if (result) {
+        emit_ast_type_def_event_json(type, fields, num_fields);
+    }
     return result;
 }
 
