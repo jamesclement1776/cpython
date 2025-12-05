@@ -4,6 +4,7 @@
 #define Py_INTERNAL_AST_STATE_H
 
 #include "pycore_lock.h"          // _PyOnceFlag
+#include "Python-ast.h"           // struct _expr
 
 #ifdef __cplusplus
 extern "C" {
