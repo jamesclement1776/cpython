@@ -10,6 +10,8 @@
 #undef NDEBUG
 
 #include "Python.h"
+#include "pycore_asdl.h"
+#include "Python-ast.h"
 #include "pycore_backoff.h"       // JUMP_BACKWARD_INITIAL_VALUE
 #include "pycore_bitutils.h"      // _Py_bswap32()
 #include "pycore_bytesobject.h"   // _PyBytes_Find()

@@ -3,6 +3,8 @@
 #endif
 
 #include "Python.h"
+#include "pycore_asdl.h"
+#include "Python-ast.h"
 #include "compile.h"
 #include "opcode.h"
 #include "pycore_ceval.h"           // SPECIAL_MAX
