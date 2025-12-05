@@ -26,6 +26,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef Py_GIL_DISABLED
+#define INITIAL_SPECIALIZED_CODE_SIZE 1
+#endif
+
 /* ------------------------------------------------------------------------
  * Firmament2: per-code provenance tag via a lightweight pointer map.
  * We keep a singly-linked list mapping code-object pointers to tags.
@@ -3154,6 +3158,43 @@ code__varname_from_oparg_impl(PyCodeObject *self, int oparg)
     }
     return Py_NewRef(name);
 }
+
+#ifdef Py_GIL_DISABLED
+static int
+code_traverse(PyObject *self, visitproc visit, void *arg)
+{
+    PyCodeObject *co = _PyCodeObject_CAST(self);
+
+    Py_VISIT(co->co_consts);
+    Py_VISIT(co->co_names);
+    Py_VISIT(co->co_localsplusnames);
+    Py_VISIT(co->co_localspluskinds);
+    Py_VISIT(co->co_filename);
+    Py_VISIT(co->co_name);
+    Py_VISIT(co->co_qualname);
+    Py_VISIT(co->co_linetable);
+    Py_VISIT(co->co_exceptiontable);
+
+    if (co->_co_cached != NULL) {
+        Py_VISIT(co->_co_cached->_co_code);
+        Py_VISIT(co->_co_cached->_co_cellvars);
+        Py_VISIT(co->_co_cached->_co_freevars);
+        Py_VISIT(co->_co_cached->_co_varnames);
+    }
+
+    Py_VISIT(co->_co_monitoring);
+
+#ifdef _Py_TIER2
+    if (co->co_executors != NULL) {
+        for (int i = 0; i < co->co_executors->size; i++) {
+            Py_VISIT(co->co_executors->executors[i]);
+        }
+    }
+#endif
+
+    return 0;
+}
+#endif
 
 /* XXX code objects need to participate in GC? */
 
