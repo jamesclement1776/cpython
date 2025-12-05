@@ -141,22 +141,23 @@ emit_ast_type_def_event_json(const char *kind,
     (void)snprintf(
         json_buf,
         sizeof(json_buf),
-        "{""\\\"type\\\":\\\"ast_type_def\\\",""
-          "\\\"envelope\\\":{"
-            "\\\"event_id\\\":%llu,"
-            "\\\"pid\\\":%lu,"
-            "\\\"tid\\\":%llu,"
-            "\\\"ts_ns\\\":%lld"
-          "},""
-          "\\\"payload\\\":{"
-            "\\\"kind\\\":\\\"%s\\\",""
-            "\\\"fields\\\":%s%s"
-          "}""
+        "{"
+          "\"type\":\"ast_type_def\","
+          "\"envelope\":{"
+            "\"event_id\":%llu,"
+            "\"pid\":%lu,"
+            "\"tid\":%llu,"
+            "\"ts_ns\":%lld"
+          "},"
+          "\"payload\":{"
+            "\"kind\":\"%s\","
+            "\"fields\":%s%s"
+          "}"
         "}",
         eid, pid, tid, ts,
         kind,
         fields ? fields_buf : "[]",
-        truncated ? ",\\\"truncated_fields\\\":true" : ""
+        truncated ? ",\"truncated_fields\":true" : "",
     );
     printf("%s\n", json_buf);
     fflush(stdout);
