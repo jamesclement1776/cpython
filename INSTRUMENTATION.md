@@ -94,3 +94,14 @@ printf "\nAllocation lifecycle (MALLOC/DEALLOC):\n" && \
 ```
 
 Each line in `/tmp/firm2_events.ndjson` is NDJSON with the common envelope (`event_id`, `pid`, `tid`, `ts_ns`) and the emitter-specific payload fields, letting you inspect or post-process the full stream.
+
+### AST type definition events during the CPython build
+
+The AST type-definition emitter (`emit_ast_type_def_event_json`) runs when the interpreter creates the `ast.*` types during initialization, which happens while the freshly built interpreter is used to compile the standard library. If you want those `"type":"ast_type_def"` lines to appear during `make`/`make install`, export the gate before invoking the build so `_firm2_enabled()` evaluates to true for the bootstrap interpreter:
+
+```bash
+FIRMAMENT2_ENABLE=1 make -j"$(nproc)"
+FIRMAMENT2_ENABLE=1 make install
+```
+
+Without the environment variable set, the generated code is still present but the emitter is a no-op.
