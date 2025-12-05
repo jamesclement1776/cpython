@@ -157,7 +157,7 @@ emit_ast_type_def_event_json(const char *kind,
         eid, pid, tid, ts,
         kind,
         fields ? fields_buf : "[]",
-        truncated ? ",\"truncated_fields\":true" : "",
+        truncated ? ",\"truncated_fields\":true" : ""
     );
     printf("%s\n", json_buf);
     fflush(stdout);
