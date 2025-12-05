@@ -2,6 +2,7 @@
 #define PEGEN_H
 
 #include <Python.h>
+#include <Python-ast.h>
 #include <pycore_ast.h>
 #include <pycore_token.h>
 
