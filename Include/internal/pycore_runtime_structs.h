@@ -83,7 +83,7 @@ struct _parser_runtime_state {
 #else
     int _not_used;
 #endif
-    struct _expr dummy_name;
+    expr_ty dummy_name;
 };
 
 typedef struct {
