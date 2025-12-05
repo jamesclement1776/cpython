@@ -68,7 +68,7 @@ struct _fileutils_state {
 #include "pycore_debug_offsets.h" // _Py_DebugOffsets
 #include "pycore_signal.h"        // struct _signals_runtime_state
 #include "pycore_faulthandler.h"  // struct _faulthandler_runtime_state
-#include "pycore_ast.h"           // struct _expr
+#include "Python-ast.h"           // struct _expr
 
 #ifdef Py_DEBUG
 #define _PYPEGEN_NSTATISTICS 2000
