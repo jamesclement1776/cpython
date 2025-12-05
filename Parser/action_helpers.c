@@ -2,15 +2,29 @@
 #include "pycore_pystate.h"         // _PyInterpreterState_GET()
 #include "pycore_runtime.h"         // _PyRuntime
 #include "pycore_unicodeobject.h"   // _PyUnicode_InternImmortal()
+#include "pycore_ast.h"             // Name_kind, Load
+#include "pycore_global_strings.h"  // _Py_STR(empty)
 
 #include "pegen.h"
 #include "string_parser.h"          // _PyPegen_decode_string()
 
 
+const struct _expr _PyParser_dummy_name = {
+    .kind = Name_kind,
+    .v.Name = {
+        .id = &_Py_STR(empty),
+        .ctx = Load,
+    },
+    .lineno = 1,
+    .col_offset = 0,
+    .end_lineno = 1,
+    .end_col_offset = 0,
+};
+
 void *
 _PyPegen_dummy_name(Parser *p, ...)
 {
-    return &_PyRuntime.parser.dummy_name;
+    return _PyRuntime.parser.dummy_name;
 }
 
 /* Creates a single-element asdl_seq* that contains a */
